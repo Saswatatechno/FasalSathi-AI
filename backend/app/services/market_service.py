@@ -10,8 +10,8 @@ from app.schemas.market_schema import MarketInfo, MarketPriceResponse
 DATA_GOV_RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 DATA_GOV_API_URL = f"https://api.data.gov.in/resource/{DATA_GOV_RESOURCE_ID}"
 DEFAULT_CROP = "tomato"
-REQUEST_TIMEOUT_SECONDS = 10.0
-MAX_RECORDS = 1000
+REQUEST_TIMEOUT_SECONDS = 30.0
+MAX_RECORDS = 100
 
 
 class MarketService:
@@ -45,14 +45,19 @@ class MarketService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(30.0, connect=10.0)
+            ) as client:
                 response = await client.get(DATA_GOV_API_URL, params=params)
                 response.raise_for_status()
                 payload = response.json()
         except httpx.TimeoutException as exc:
             raise HTTPException(status_code=504, detail="Market data source timed out.") from exc
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=502, detail="Market data source returned an error.") from exc
+            raise HTTPException(
+                status_code=502,
+                detail="Market data source returned an error.",
+            ) from exc
         except (httpx.RequestError, ValueError) as exc:
             raise HTTPException(
                 status_code=502,
@@ -60,11 +65,13 @@ class MarketService:
             ) from exc
 
         if payload.get("status") not in (None, "ok"):
-            raise HTTPException(status_code=502, detail="Market data source returned an invalid response.")
+            raise HTTPException(
+                status_code=502,
+                detail="Market data source returned an invalid response.",
+            )
 
         records = payload.get("records") or []
         markets = self._normalize_records(records, location_query)
-
         best_market = max(markets, key=lambda market: market.price) if markets else None
 
         return MarketPriceResponse(
