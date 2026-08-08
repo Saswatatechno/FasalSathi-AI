@@ -11,7 +11,7 @@ DATA_GOV_RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 DATA_GOV_API_URL = f"https://api.data.gov.in/resource/{DATA_GOV_RESOURCE_ID}"
 DEFAULT_CROP = "tomato"
 REQUEST_TIMEOUT_SECONDS = 30.0
-MAX_RECORDS = 100
+MAX_RECORDS = 20
 
 
 class MarketService:
@@ -37,11 +37,14 @@ class MarketService:
                 detail="Market data service is not configured. Set DATA_GOV_API_KEY in backend/.env.",
             )
 
+        # Keep the upstream response small. We only need fields required to
+        # display a market and compare modal prices.
         params: Dict[str, Any] = {
             "api-key": self.api_key,
             "format": "json",
             "filters[commodity]": crop_query,
             "limit": MAX_RECORDS,
+            "fields": "state,district,market,commodity,variety,grade,arrival_date,min_price,max_price,modal_price",
         }
 
         try:
