@@ -37,8 +37,6 @@ class MarketService:
                 detail="Market data service is not configured. Set DATA_GOV_API_KEY in backend/.env.",
             )
 
-        # Keep the upstream response small. We only need fields required to
-        # display a market and compare modal prices.
         params: Dict[str, Any] = {
             "api-key": self.api_key,
             "format": "json",
@@ -49,7 +47,12 @@ class MarketService:
 
         try:
             async with httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0, connect=10.0)
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                trust_env=False,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "FasalSathi-AI/1.0",
+                },
             ) as client:
                 response = await client.get(DATA_GOV_API_URL, params=params)
                 response.raise_for_status()
